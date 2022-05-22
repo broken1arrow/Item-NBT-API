@@ -1,21 +1,19 @@
 package de.tr7zw.changeme.nbtapi.utils;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import de.tr7zw.changeme.nbtapi.NBTItem;
+
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.logging.Level;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-
-import de.tr7zw.changeme.nbtapi.NBTItem;
-
 /**
  * This class uses the Spiget API to check for updates
- *
  */
 public class VersionChecker {
 
@@ -27,7 +25,7 @@ public class VersionChecker {
 		URL url = new URL(REQUEST_URL);
 		HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 		connection.addRequestProperty("User-Agent", USER_AGENT);// Set
-																// User-Agent
+		// User-Agent
 
 		// If you're not sure if the request will be successful,
 		// you need to check the response code and use #getErrorStream if it
@@ -51,8 +49,8 @@ public class VersionChecker {
 						"[NBTAPI] Please update the NBTAPI or the plugin that contains the api(nag the mod author when the newest release has an old version, not the NBTAPI dev)!");
 
 			} else if (versionDifference == 0) {
-			    if(!hideOk)
-			        MinecraftVersion.getLogger().log(Level.INFO, "[NBTAPI] The NBT-API seems to be up-to-date!");
+				if (!hideOk)
+					MinecraftVersion.getLogger().log(Level.INFO, "[NBTAPI] The NBT-API seems to be up-to-date!");
 			} else if (versionDifference == 1) {
 				MinecraftVersion.getLogger().log(Level.INFO, "[NBTAPI] The NBT-API at '" + NBTItem.class.getPackage()
 						+ "' seems to be a future Version, not yet released on Spigot/CurseForge! This is not an error!");
@@ -99,7 +97,7 @@ public class VersionChecker {
 			return 1;
 		if (!relPatch.contains("-") && curPatch.contains("-"))
 			return -1; // Release has no - but we do = We use a Snapshot of the
-						// release
+		// release
 		if (relPatch.contains("-") && curPatch.contains("-"))
 			return 0; // Release and cur are Snapshots/alpha/beta
 		return 1;
