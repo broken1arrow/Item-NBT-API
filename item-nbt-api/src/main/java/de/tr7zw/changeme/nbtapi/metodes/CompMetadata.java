@@ -1,7 +1,9 @@
 package de.tr7zw.changeme.nbtapi.metodes;
 
+
 import de.tr7zw.changeme.nbtapi.NBTCompound;
 import de.tr7zw.changeme.nbtapi.NBTItem;
+import de.tr7zw.changeme.nbtapi.utils.MinecraftVersion;
 import de.tr7zw.changeme.nbtapi.utils.Valid;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -15,6 +17,7 @@ import org.bukkit.metadata.MetadataValue;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import static de.tr7zw.changeme.nbtapi.metodes.RegisterNbtAPI.getPlugin;
@@ -33,9 +36,6 @@ public final class CompMetadata {
 	private static final String DELIMITER = "%-%";
 	private static final Plugin plugin = getPlugin();
 
-	// Static access
-	private CompMetadata() {
-	}
 
 	// ----------------------------------------------------------------------------------------
 	// Setting metadata
@@ -44,16 +44,16 @@ public final class CompMetadata {
 	/**
 	 * A shortcut for setting a tag with key-value pair on an item
 	 *
-	 * @param item
-	 * @param key
-	 * @param value
-	 * @return
+	 * @param item  you want to set metadata on.
+	 * @param key   you want to set on this item.
+	 * @param value you want to set on this item.
+	 * @return clone of your item with metadata set.
 	 */
-	public static ItemStack setMetadata(final ItemStack item, final String key, final Object value) {
+	public ItemStack setMetadata(@Nonnull final ItemStack item, @Nonnull final String key, @Nonnull final Object value) {
 		Valid.checkNotNull(item, "Setting NBT tag got null item");
 
 		final NBTItem nbt = new NBTItem(item);
-		final NBTCompound tag = nbt.addCompound(plugin.getName() + "_NBT");//FoConstants.NBT.TAG);
+		final NBTCompound tag = nbt.addCompound(getCompoundKey());//FoConstants.NBT.TAG);
 
 		if (value instanceof String)
 			tag.setString(key, (String) value);
@@ -65,21 +65,21 @@ public final class CompMetadata {
 	/**
 	 * Attempts to set a persistent metadata for entity
 	 *
-	 * @param entity
-	 * @param tag
+	 * @param entity you want to set metadata on.
+	 * @param tag    you want to set on this entity.
 	 */
-	public static void setMetadata(final Entity entity, final String tag) {
+	public void setMetadata(@Nonnull final Entity entity, @Nonnull final String tag) {
 		setMetadata(entity, tag, tag);
 	}
 
 	/**
 	 * Attempts to set a persistent metadata tag with value for entity
 	 *
-	 * @param entity
-	 * @param key
-	 * @param value
+	 * @param entity you want to set metadata on.
+	 * @param key    you want to set on this entity.
+	 * @param value  you want to set on this entity.
 	 */
-	public static void setMetadata(final Entity entity, final String key, final String value) {
+	public void setMetadata(@Nonnull final Entity entity, @Nonnull final String key, @Nonnull final String value) {
 		Valid.checkNotNull(entity);
 
 		final String tag = format(key, value);
@@ -96,23 +96,23 @@ public final class CompMetadata {
 	}
 
 	// Format the syntax of stored tags
-	private static String format(final String key, final String value) {
+	private String format(final String key, final String value) {
 		return plugin.getName() + DELIMITER + key + DELIMITER + value;
 	}
 
 	/**
 	 * Sets persistent tile entity metadata
 	 *
-	 * @param tileEntity
-	 * @param key
-	 * @param value
+	 * @param tileEntity you want set metadata.
+	 * @param key        you want to set on this tileEntity.
+	 * @param value      you want to set on this tileEntity.
 	 */
-	public static void setMetadata(final BlockState tileEntity, final String key, final String value) {
+	public void setMetadata(@Nonnull final BlockState tileEntity, @Nonnull final String key, @Nonnull final String value) {
 		Valid.checkNotNull(tileEntity);
 		Valid.checkNotNull(key);
 		Valid.checkNotNull(value);
-		if (true) {
-			//if (MinecraftVersion.atLeast(V.v1_14)) {
+
+		if (MinecraftVersion.isAtLeastVersion(MinecraftVersion.MC1_14_R1)) {
 			Valid.checkBoolean(tileEntity instanceof TileState, "BlockState must be instance of a TileState not " + tileEntity);
 
 			setNamedspaced((TileState) tileEntity, key, value);
@@ -126,7 +126,35 @@ public final class CompMetadata {
 		}
 	}
 
-	private static void setNamedspaced(final TileState tile, final String key, final String value) {
+	/**
+	 * Sets a temporary metadata to entity. This metadata is NOT persistent
+	 * and is removed on server stop, restart or reload.
+	 * <p>
+	 * Use {@link #setMetadata(Entity, String)} to set persistent custom tags for entities.
+	 *
+	 * @param entity you want set metadata.
+	 * @param tag    you want to set.
+	 */
+	public void setTempMetadata(@Nonnull final Entity entity, @Nonnull final String tag) {
+		entity.setMetadata(createTempMetadataKey(tag), new FixedMetadataValue(plugin, tag));
+	}
+
+	/**
+	 * Sets a temporary metadata to entity. This metadata is NOT persistent
+	 * and is removed on server stop, restart or reload.
+	 * <p>
+	 * Use {@link #setMetadata(Entity, String)} to set persistent custom tags for entities.
+	 *
+	 * @param entity you want set metadata.
+	 * @param tag    you want to set.
+	 * @param key    you want to set.
+	 */
+	public void setTempMetadata(@Nonnull final Entity entity, @Nonnull final String tag, @Nonnull final Object key) {
+		entity.setMetadata(createTempMetadataKey(tag), new FixedMetadataValue(plugin, key));
+	}
+
+
+	private void setNamedspaced(final TileState tile, final String key, final String value) {
 		tile.getPersistentDataContainer().set(new NamespacedKey(plugin, key), PersistentDataType.STRING, value);
 	}
 
@@ -137,20 +165,43 @@ public final class CompMetadata {
 	/**
 	 * A shortcut from reading a certain key from an item's given compound tag
 	 *
-	 * @param item
-	 * @param key
-	 * @return
+	 * @param item you want get metadata.
+	 * @param key  to get the metadata on item.
+	 * @return metadata value.
 	 */
 	@Nullable
-	public static String getMetadata(final ItemStack item, final String key) {
+	public String getMetadata(@Nonnull final ItemStack item, @Nonnull final String key) {
 		Valid.checkNotNull(item, "Reading NBT tag got null item");
 		if (item.getType() == Material.AIR)
 			//if (item == null || CompMaterial.isAir(item.getType()))
 			return null;
 
-		final String compoundTag = plugin.getName() + "_NBT";
+		final String compoundTag = getCompoundKey();
 		final NBTItem nbt = new NBTItem(item);
 		final String value = nbt.hasKey(compoundTag) ? nbt.getCompound(compoundTag).getString(key) : null;
+
+		return getOrNull(value);
+	}
+
+	/**
+	 * A shortcut from reading a certain key from an item's given compound tag
+	 *
+	 * @param item  you want get metadata.
+	 * @param clazz class you set as value.
+	 * @param key   to get the metadata on item.
+	 * @return metadata value.
+	 */
+	@Nullable
+	public <T> T getMetadata(@Nonnull final ItemStack item, @Nonnull Class<T> clazz, @Nonnull final String key) {
+		Valid.checkNotNull(item, "Reading NBT tag got null item");
+		if (item.getType() == Material.AIR)
+			//if (item == null || CompMaterial.isAir(item.getType()))
+			return null;
+
+		final String compoundTag = getCompoundKey();
+		final NBTItem nbt = new NBTItem(item);
+
+		final T value = nbt.hasKey(compoundTag) ? nbt.getCompound(compoundTag).getObject(key, clazz) : null;
 
 		return getOrNull(value);
 	}
@@ -159,11 +210,12 @@ public final class CompMetadata {
 	 * Attempts to get the entity's metadata, first from scoreboard tag,
 	 * second from Bukkit metadata
 	 *
-	 * @param entity
-	 * @param key
-	 * @return the tag, or null
+	 * @param entity you want get metadata.
+	 * @param key    to get the metadata on item.
+	 * @return the value, or null.
 	 */
-	public static String getMetadata(final Entity entity, final String key) {
+	@Nullable
+	public String getMetadata(@Nonnull final Entity entity, @Nonnull final String key) {
 		Valid.checkNotNull(entity);
 
 		if (false)
@@ -181,7 +233,7 @@ public final class CompMetadata {
 	}
 
 	// Parses the tag and gets its value
-	private static String getTag(final String raw, final String key) {
+	private String getTag(final String raw, final String key) {
 		final String[] parts = raw.split(DELIMITER);
 
 		return parts.length == 3 && parts[0].equals(plugin.getName()) && parts[1].equals(key) ? parts[2] : null;
@@ -190,11 +242,12 @@ public final class CompMetadata {
 	/**
 	 * Return saved tile entity metadata, or null if none
 	 *
-	 * @param tileEntity
-	 * @param key,       or null if none
-	 * @return
+	 * @param tileEntity you want get metadata.
+	 * @param key        to get the metadata on item.
+	 * @return the value, or null.
 	 */
-	public static String getMetadata(final BlockState tileEntity, final String key) {
+	@Nullable
+	public String getMetadata(@Nonnull final BlockState tileEntity, @Nonnull final String key) {
 		Valid.checkNotNull(tileEntity);
 		Valid.checkNotNull(key);
 
@@ -208,6 +261,23 @@ public final class CompMetadata {
 		final String value = tileEntity.hasMetadata(key) ? tileEntity.getMetadata(key).get(0).asString() : null;
 
 		return getOrNull(value);
+	}
+
+	/**
+	 * Return entity metadata value or null if has none
+	 * <p>
+	 * Only usable if you set it using the {@link #setTempMetadata(Entity, String, Object)} with the key parameter
+	 * because otherwise the tag is the same as the value we return
+	 *
+	 * @param entity you want get metadata.
+	 * @param tag    you want to set.
+	 * @return the value you set or null.
+	 */
+	@Nullable
+	public MetadataValue getTempMetadata(@Nonnull final Entity entity, @Nonnull final String tag) {
+		final String key = createTempMetadataKey(tag);
+
+		return entity.hasMetadata(key) ? entity.getMetadata(key).get(0) : null;
 	}
 
 	private static String getNamedspaced(final TileState tile, final String key) {
@@ -224,11 +294,11 @@ public final class CompMetadata {
 	 * Return true if the given itemstack has the given key stored at its compound
 	 * tag
 	 *
-	 * @param item
-	 * @param key
-	 * @return
+	 * @param item you want to check.
+	 * @param key  you want to check this item have.
+	 * @return true if it has this key.
 	 */
-	public static boolean hasMetadata(final ItemStack item, final String key) {
+	public boolean hasMetadata(@Nonnull final ItemStack item, @Nonnull final String key) {
 		Valid.checkBoolean(true, "NBT ItemStack tags only support MC 1.7.10+");
 		Valid.checkNotNull(item);
 
@@ -236,7 +306,7 @@ public final class CompMetadata {
 			return false;
 
 		final NBTItem nbt = new NBTItem(item);
-		final NBTCompound tag = nbt.getCompound(plugin.getName() + "_NBT");
+		final NBTCompound tag = nbt.getCompound(getCompoundKey());
 
 		return tag != null && tag.hasKey(key);
 	}
@@ -245,11 +315,11 @@ public final class CompMetadata {
 	 * Returns if the entity has the given tag by key, first checks scoreboard tags,
 	 * and then bukkit metadata
 	 *
-	 * @param entity
-	 * @param key
-	 * @return
+	 * @param entity you want to check.
+	 * @param key    you want to check this entity have.
+	 * @return true if it has this key.
 	 */
-	public static boolean hasMetadata(final Entity entity, final String key) {
+	public boolean hasMetadata(final Entity entity, final String key) {
 		Valid.checkNotNull(entity);
 		if (true)
 			//if (Remain.hasScoreboardTags())
@@ -264,11 +334,11 @@ public final class CompMetadata {
 	 * Return true if the given tile entity block such as {@link CreatureSpawner} has
 	 * the given key
 	 *
-	 * @param tileEntity
-	 * @param key
-	 * @return
+	 * @param tileEntity you want to check.
+	 * @param key        you want to check this tileEntity have.
+	 * @return true if it has this key.
 	 */
-	public static boolean hasMetadata(final BlockState tileEntity, final String key) {
+	public boolean hasMetadata(final BlockState tileEntity, final String key) {
 		Valid.checkNotNull(tileEntity);
 		Valid.checkNotNull(key);
 		if (true) {
@@ -281,71 +351,36 @@ public final class CompMetadata {
 		return tileEntity.hasMetadata(key);
 	}
 
-	private static boolean hasNamedspaced(final TileState tile, final String key) {
+	/**
+	 * Returns if the player has the given tag.
+	 *
+	 * @param player you want to check
+	 * @param tag    you want to check if player have.
+	 * @return true if playe has it.
+	 */
+	public boolean hasTempMetadata(final Entity player, final String tag) {
+		return player.hasMetadata(createTempMetadataKey(tag));
+	}
+
+	private boolean hasNamedspaced(final TileState tile, final String key) {
 		return tile.getPersistentDataContainer().has(new NamespacedKey(plugin, key), PersistentDataType.STRING);
 	}
 
 	// Parses the tag and gets its value
-	private static boolean hasTag(final String raw, final String tag) {
+	private boolean hasTag(final String raw, final String tag) {
 		final String[] parts = raw.split(DELIMITER);
 
 		return parts.length == 3 && parts[0].equals(plugin.getName()) && parts[1].equals(tag);
 	}
 
-	/**
-	 * Sets a temporary metadata to entity. This metadata is NOT persistent
-	 * and is removed on server stop, restart or reload.
-	 * <p>
-	 * Use {@link #setMetadata(Entity, String)} to set persistent custom tags for entities.
-	 *
-	 * @param entity
-	 * @param tag
-	 */
-	public static void setTempMetadata(final Entity entity, final String tag) {
-		entity.setMetadata(createTempMetadataKey(tag), new FixedMetadataValue(plugin, tag));
-	}
-
-	/**
-	 * Sets a temporary metadata to entity. This metadata is NOT persistent
-	 * and is removed on server stop, restart or reload.
-	 * <p>
-	 * Use {@link #setMetadata(Entity, String)} to set persistent custom tags for entities.
-	 *
-	 * @param entity
-	 * @param tag
-	 * @param key
-	 */
-	public static void setTempMetadata(final Entity entity, final String tag, final Object key) {
-		entity.setMetadata(createTempMetadataKey(tag), new FixedMetadataValue(plugin, key));
-	}
-
-	/**
-	 * Return entity metadata value or null if has none
-	 * <p>
-	 * Only usable if you set it using the {@link #setTempMetadata(Entity, String, Object)} with the key parameter
-	 * because otherwise the tag is the same as the value we return
-	 *
-	 * @param entity
-	 * @param tag
-	 * @return
-	 */
-	public static MetadataValue getTempMetadata(final Entity entity, final String tag) {
-		final String key = createTempMetadataKey(tag);
-
-		return entity.hasMetadata(key) ? entity.getMetadata(key).get(0) : null;
-	}
-
-	public static boolean hasTempMetadata(final Entity player, final String tag) {
-		return player.hasMetadata(createTempMetadataKey(tag));
-	}
 
 	/**
 	 * Remove temporary metadata from the entity
 	 *
-	 * @param player
-	 * @param tag
+	 * @param player you want to remove metadata.
+	 * @param tag    you want to remove.
 	 */
-	public static void removeTempMetadata(final Entity player, final String tag) {
+	public void removeTempMetadata(final Entity player, final String tag) {
 		final String key = createTempMetadataKey(tag);
 
 		if (player.hasMetadata(key))
@@ -355,18 +390,32 @@ public final class CompMetadata {
 	/*
 	 * Create a new temporary metadata key
 	 */
-	private static String createTempMetadataKey(final String tag) {
+	private String createTempMetadataKey(final String tag) {
 		return plugin.getName() + "_" + tag;
+	}
+
+	public String getCompoundKey() {
+		return plugin.getName() + "_NBT";
 	}
 
 	/**
 	 * If the String equals to none or is empty, return null
 	 *
-	 * @param input
-	 * @return
+	 * @param input string to check.
+	 * @return input or null
 	 */
 	public static String getOrNull(final String input) {
 		return input == null || "none".equalsIgnoreCase(input) || input.isEmpty() ? null : input;
+	}
+
+	/**
+	 * If the type equals to none or is empty, return null
+	 *
+	 * @param input to check.
+	 * @return input or null
+	 */
+	public static <T> T getOrNull(final T input) {
+		return input == null || "none".equalsIgnoreCase(input.toString()) || input.toString().isEmpty() ? null : input;
 	}
 
 	/**
