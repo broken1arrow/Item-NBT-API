@@ -9,6 +9,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import de.tr7zw.changeme.nbtapi.utils.nmsmappings.Forge1710Mappings;
 import org.bukkit.inventory.ItemStack;
 
 import de.tr7zw.changeme.nbtapi.utils.MinecraftVersion;
@@ -504,10 +505,20 @@ public class NBTCompound {
 	}
 
 	/**
-	 * @param key
+	 * @param key String key
 	 * @return True if the key is set
+	 * @deprecated Use {@link #hasTag(String)} instead
 	 */
+	@Deprecated
 	public Boolean hasKey(String key) {
+		return hasTag(key);
+	}
+
+	/**
+	 * @param key String key
+	 * @return true, if the key is set
+	 */
+	public boolean hasTag(String key) {
 		try {
 			readLock.lock();
 			Boolean b = (Boolean) NBTReflectionUtil.getData(this, ReflectionMethod.COMPOUND_HAS_KEY, key);
@@ -733,6 +744,35 @@ public class NBTCompound {
 	}
 
 	/**
+	 * Returns the stored value if exists, or provided value otherwise.
+	 * <p>Supported types: {@code byte/Byte, short/Short, int/Integer, long/Long, float/Float, double/Double, byte[], int[]}, {@link String}, {@link UUID}
+	 *
+	 * @param key key
+	 * @param defaultValue default non-null value
+	 * @param <T> value type
+	 * @return Stored or provided value
+	 */
+	@SuppressWarnings("unchecked")
+	public <T> T getOrDefault(String key, T defaultValue) {
+		if (defaultValue == null) throw new NullPointerException("Default type in getOrDefault can't be null!");
+		if (!hasTag(key)) return defaultValue;
+
+		Class<?> clazz = defaultValue.getClass();
+		if (clazz == Byte.class) return (T) getByte(key);
+		if (clazz == Short.class) return (T) getShort(key);
+		if (clazz == Integer.class) return (T) getInteger(key);
+		if (clazz == Long.class) return (T) getLong(key);
+		if (clazz == Float.class) return (T) getFloat(key);
+		if (clazz == Double.class) return (T) getDouble(key);
+		if (clazz == byte[].class) return (T) getByteArray(key);
+		if (clazz == int[].class) return (T) getIntArray(key);
+		if (clazz == String.class) return (T) getString(key);
+		if (clazz == UUID.class) return (T) getUUID(key);
+
+		throw new NbtApiException("Unsupported type for getOrDefault: " + clazz.getName());
+	}
+
+	/**
 	 * @param name
 	 * @return The type of the given stored key or null
 	 */
@@ -790,6 +830,15 @@ public class NBTCompound {
 	}
 
 	/**
+	 * Remove all keys from this compound
+	 */
+	public void clearNBT(){
+		for (String key : getKeys()) {
+			removeKey(key);
+		}
+	}
+
+	/**
 	 * @deprecated Just use toString()
 	 * @return A {@link String} representation of the NBT in Mojang JSON. This is different from normal JSON!
 	 */
@@ -800,7 +849,11 @@ public class NBTCompound {
 			Object comp = NBTReflectionUtil.gettoCompount(getCompound(), this);
 			if (comp == null)
 				return "{}";
-			return comp.toString();
+			if (MinecraftVersion.isForgePresent() && MinecraftVersion.getVersion() == MinecraftVersion.MC1_7_R4){
+				return Forge1710Mappings.toString(comp);
+			}else {
+				return comp.toString();
+			}
 		} finally {
 			readLock.unlock();
 		}
